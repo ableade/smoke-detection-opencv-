@@ -32,7 +32,6 @@ int addTrainingData(string directory, cv::Mat& m) {
                 cv::Mat m_flat = cnv.reshape(1,1); // unroll image into single channel vector
                 m.push_back(m_flat);
                 count++;
-                //cout << "Processed image "<< it->path().string() <<endl;
             }
         } 
     }
@@ -56,7 +55,7 @@ int main(int argc, char *argv[])
         responses[i] = 0;
     }
     
-    cout <<"Size of training daa  is "<<responses.size()<<endl;
+    cout <<"Size of training data is "<<responses.size()<<endl;
 
     auto trainDataSet = cv::ml::TrainData::create(trainingData, cv::ml::ROW_SAMPLE, cv::Mat(responses, true), 
         cv::noArray(), cv::noArray(), cv::noArray(), cv::noArray());
@@ -64,19 +63,15 @@ int main(int argc, char *argv[])
     //We will only use 80% of our data set for training.
     trainDataSet->setTrainTestSplitRatio(0.8);
 
-    
 	cv::Ptr<cv::ml::ANN_MLP> nn = cv::ml::ANN_MLP::create();
-    cout << "Created neural network"<<endl;
 
 	//Neural network with three layers and 512 nodes
 	std::vector<int> layerSizes = { 270000, 512, 1 };
 	nn->setLayerSizes(layerSizes);
-    cout << "Set neural network with 3 layers"<<endl;
-
+    cout << "Training neural network with 3 layers"<<endl;
 	nn->train(trainDataSet);
 
     cout << "Calcuating error for neural network"<<endl;
-
     cv::Mat testResponses;
     auto error = nn->calcError(trainDataSet, true, testResponses);
     cout << "Percentage error was "<<error<<" percent"<<endl;
