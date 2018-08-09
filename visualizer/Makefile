@@ -2,7 +2,7 @@ SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 
 # Use the name of the current directory as the name of the executable: 
-all:  simpleneuralnet
+all:  colorhistvisualizer
 
 
 DEPDIR = deps
@@ -27,8 +27,8 @@ LFLAGS += -lboost_filesystem
 LFLAGS += -lboost_system
 LFLAGS += $(OPENCV_LINK_FLAGS)
 
-simpleneuralnet : simpleneuralnetwork.cpp
+colorhistvisualizer : hist.cpp
 	$(CXX) -o $@ $< $(LFLAGS)
 
 clean:
-	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) simpleneuralnet
+	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) colorhistvisualizer
