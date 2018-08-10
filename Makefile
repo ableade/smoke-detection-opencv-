@@ -28,7 +28,7 @@ LFLAGS += -lboost_system
 LFLAGS += $(OPENCV_LINK_FLAGS)
 LFLAGS += -g
 simpleneuralnet : simpleneuralnetwork.cpp
-	$(CXX) -o $@ $< $(LFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LFLAGS)
 
 clean:
 	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) simpleneuralnet
