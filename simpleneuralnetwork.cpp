@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     trainDataSet->setTrainTestSplitRatio(0.8); colorHistDataSet ->setTrainTestSplitRatio(0.8);
     cv::Ptr<cv::ml::ANN_MLP> nn = cv::ml::ANN_MLP::create();
 
-    //Neural network with three layers and 512 nodes
+    //Neural network with 2 hidden layers
     std::vector<int> layerSizes = {270000, 1012, 512, 1};
     nn->setLayerSizes(layerSizes);
     {
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
     cout << "Percentage error over the training set was " << trainError << " percent" << endl;
 
 
-  
+    //Neural network with 3 hidden layers
     std::vector<int> colorHistogramLayerSizes {256, 200, 150, 100, 1};
     nn->setLayerSizes(layerSizes);
     {
