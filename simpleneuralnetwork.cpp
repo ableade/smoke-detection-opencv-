@@ -54,6 +54,7 @@ cv::Mat getColorHistorgramDescriptorsSingleChannel(const cv::Mat& tData) {
         /// Compute the histograms:
         calcHist( &r, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
         cv::Mat transpose = hist.t();
+        transpose.copyTo(colorHist.row(i));
     }
     return colorHist;
 }
