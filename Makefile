@@ -26,7 +26,7 @@ OPENCV_LINK_FLAGS += -lopencv_ml
 LFLAGS += -lboost_filesystem
 LFLAGS += -lboost_system
 LFLAGS += $(OPENCV_LINK_FLAGS)
-
+LFLAGS += -g
 simpleneuralnet : simpleneuralnetwork.cpp
 	$(CXX) -o $@ $< $(LFLAGS)
 
