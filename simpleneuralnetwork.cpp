@@ -66,6 +66,7 @@ cv::Mat getColorHistorgramDescriptorsMultipleChannels(std::vector<directory_entr
     float range[] = { 0, 256 } ;
     const float* histRange = { range };
     cv::Mat colorHist(v.size(), 768, CV_32F);
+    return colorHist;
     //hconcat(bgr_planes[1], bgr_planes[2], temp);
     //hconcat(bgr_planes[0], temp, colorHist.row(i));
 }
