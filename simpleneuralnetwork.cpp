@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 
     //Neural network with 3 hidden layers
     std::vector<int> colorHistogramLayerSizes {256, 200, 150, 100, 1};
-    nn->setLayerSizes(layerSizes);
+    nn->setLayerSizes(colorHistogramLayerSizes);
     {
         ScopedTimer scopedTimer{"Trained neural network with 3 layers with single channel histogram features"};
         nn->train(colorHistDataSet);
