@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     cout << "Size of training data is " << responses.size() << endl;
     auto histFeatures = getColorHistorgramDescriptorsSingleChannel(trainingData);
 
-    auto trainDataSet = cv::ml::TrainData::create(trainingData, cv::ml::ROW_SAMPLE, cv::Mat(responses, true),
+    auto varyingDescriptorDataSet = cv::ml::TrainData::create(trainingData, cv::ml::ROW_SAMPLE, cv::Mat(responses, true),
             cv::noArray(), cv::noArray(), cv::noArray(), cv::noArray());
 
     auto colorHistDataSet = cv::ml::TrainData::create(histFeatures, cv::ml::ROW_SAMPLE, cv::Mat(responses, true),
@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
     trainDataSet->setTrainTestSplitRatio(0.8); colorHistDataSet ->setTrainTestSplitRatio(0.8);
     cv::Ptr<cv::ml::ANN_MLP> nn = cv::ml::ANN_MLP::create();
 
+    /*
     //Neural network with 2 hidden layers
     std::vector<int> layerSizes = {270000, 1012, 512, 1};
     nn->setLayerSizes(layerSizes);
@@ -123,7 +124,7 @@ int main(int argc, char *argv[]) {
     auto trainError = nn->calcError(trainDataSet, false, cv::noArray());
     cout << "Percentage error over the test set was " << error << " percent" << endl;
     cout << "Percentage error over the training set was " << trainError << " percent" << endl;
-
+    */
 
     //Neural network with 3 hidden layers
     std::vector<int> colorHistogramLayerSizes {256, 200, 150, 100, 1};
@@ -133,8 +134,8 @@ int main(int argc, char *argv[]) {
         nn->train(colorHistDataSet);
     }
     cout << "Calcuating error for single channel color histogram neural network" << endl;
-    error = nn->calcError(trainDataSet, true, cv::noArray());
-    trainError = nn->calcError(trainDataSet, false, cv::noArray());
+    auto error = nn->calcError(colorHistDataSet, true, cv::noArray());
+    auto trainError = nn->calcError(colorHistDataSet, false, cv::noArray());
     cout << "Percentage error over the test set was " << error << " percent" << endl;
     cout << "Percentage error over the training set was " << trainError << " percent" << endl;
 
