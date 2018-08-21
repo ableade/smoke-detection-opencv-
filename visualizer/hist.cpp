@@ -19,6 +19,7 @@ using cv::Point;
 using cv::Scalar;
 using cv::NORM_MINMAX;
 using cv::namedWindow;
+using cv::imread;
 using std::vector;
 
 using namespace boost::filesystem;
@@ -31,7 +32,8 @@ void loadImageAndPlotHistogram (string directory) {
     copy(directory_iterator(directory), directory_iterator(), back_inserter(v)); 
     for (auto it = v.begin(); it != v.end();  ++ it )
     {
-        src = cv::imread(it->path().string());
+        src = imread(it->path().string());
+        cvtColor(src, dst, CV_BGR2GRAY);
         if( !src.data ) {
             continue;
         }
@@ -73,6 +75,7 @@ void loadImageAndPlotHistogram (string directory) {
                        Scalar( 0, 0, 255), 2, 8, 0  );
         }
         imshow("calcHist Demo", histImage );
+        imshow("grayscale", dst);
         char c = waitKey(0);
 
         if (c == 'n') {
@@ -84,9 +87,7 @@ void loadImageAndPlotHistogram (string directory) {
 }
 
 int main (int argc, char ** argv) {
-    Mat src, dst;
-
-      if (argc < 2) {
+    if (argc < 2) {
         cout << "Program usage : <image directory>"<<endl;
         exit(1);
     }
