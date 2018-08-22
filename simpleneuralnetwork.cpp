@@ -9,6 +9,8 @@
 #include <random>
 
 #include "scopedtimer.h"
+#include "sift.h"
+
 using Util::ScopedTimer;
 using namespace boost::filesystem;
 using std::cout;
@@ -19,6 +21,7 @@ using std::cerr;
 using std::cin;
 using std::random_device;
 using std::uniform_int_distribution;
+using std::vector;
 
 /*
 Adds training data images from directory. Images in training directory are expected to be JPG 
@@ -60,6 +63,15 @@ void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
     }
 }
 
+
+Mat getDescriptors(vector<directory_entry> v) {
+    for (auto it = v.begin(); it != v.end(); ++it) {
+        cv::Mat img = cv::imread(it->path().string());
+        if (! img.data)
+            continue;
+        cv::normalize(img, img, 0, 255, cv::NORM_MINMAX);
+    }
+}
 int addColorHistTrainingData(std::vector<directory_entry> v, cv::Mat& tData) {
     auto count =0;
     auto featureVectorSize = 768;

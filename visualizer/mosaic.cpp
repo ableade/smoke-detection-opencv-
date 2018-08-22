@@ -8,33 +8,11 @@
 using cv::Mat;
 using cv::Size;
 using cv::xfeatures2d;
-
-struct SIFTDetector
-{
-    Ptr<Feature2D> sift;
-    SIFTDetector()
-    {
-        sift = SIFT::create();
-    }
-    template<class T>
-    void operator()(const T& in, const T& mask, std::vector<cv::KeyPoint>& pts, T& descriptors, bool useProvided = false)
-    {
-        surf->detectAndCompute(in, mask, pts, descriptors, useProvided);
-    }
-};
-
-template<class KPMatcher>
-struct SURFMatcher
-{
-    KPMatcher matcher;
-    template<class T>
-    void match(const T& in1, const T& in2, std::vector<cv::DMatch>& matches)
-    {
-        matcher.match(in1, in2, matches);
-    }
-};
+using std::vector;
 
 Mat loadImages(string directory) {
+    SIFTDetector sift;
+    vector<KeyPoint> keypoints;
 	assert (is_directory(directory));
 	std::vector<directory_entry> v;
     copy(directory_iterator(directory), directory_iterator(), back_inserter(v));
@@ -42,14 +20,13 @@ Mat loadImages(string directory) {
     	img = imread(it->path().string());
     	if (!img.data()) 
     		continue
-
+        surf(img1.getMat(ACCESS_READ), Mat(), keypoints1, descriptors1);
     	cv::resize(img, img, cv::Size(500, 300), 0, 0);
   		
     }
 }
 
 int main (int argc, char ** argv) {
-	SIFTDetector sift;
     SIFTMatcher<BFMatcher> matcher;
 	std::vector<KeyPoint> keypoints1, keypoints2;
     std::vector<DMatch> matches;
