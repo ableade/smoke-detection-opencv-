@@ -63,15 +63,24 @@ void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
     }
 }
 
+vector<Mat> getDescriptorsAndKeypoints(vector<directory_entry> v) {
+    SIFTDetector sift;
+    vector<vector< KeyPoint > > keypoints;
+    vector<Mat> images; images.reserve(v.size());
+    vector<Mat> descriptors;
 
-Mat getDescriptors(vector<directory_entry> v) {
     for (auto it = v.begin(); it != v.end(); ++it) {
         cv::Mat img = cv::imread(it->path().string());
         if (! img.data)
             continue;
         cv::normalize(img, img, 0, 255, cv::NORM_MINMAX);
+        images.push_back(img);
     }
+    sift(images, keypoints, vector<Mat>());
+    sift.compute(images, keypoints, descriptors);
+    return descriptors;
 }
+
 int addColorHistTrainingData(std::vector<directory_entry> v, cv::Mat& tData) {
     auto count =0;
     auto featureVectorSize = 768;
@@ -80,7 +89,6 @@ int addColorHistTrainingData(std::vector<directory_entry> v, cv::Mat& tData) {
         if (! img.data)
             continue;
         cv::normalize(img, img, 0, 255, cv::NORM_MINMAX);
-        cv::imshow("Normalized image", img );
         vector<cv::Mat> bgr_planes;
         split( img, bgr_planes );
         int histSize = 256;
