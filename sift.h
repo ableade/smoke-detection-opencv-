@@ -14,7 +14,6 @@ using namespace cv::xfeatures2d;
 struct SIFTDetector
 {
     Ptr<Feature2D> sift;
-    vector<vector< KeyPoint >> keypoints;
 
     SIFTDetector()
     {
@@ -22,15 +21,9 @@ struct SIFTDetector
     }
 
     template<class T>
-    void operator()(const T& in, vector<vector<KeyPoint> >& pts, const T& mask)
+    void operator()(const T& in, const T& mask, vector<KeyPoint>& pts, T& descriptors, bool useProvided=false )
     {
-        sift->detect(in, pts, mask);
-    }
-    
-
-    template<class T>
-    void compute (const T& in, vector<std::vector<cv::KeyPoint> >& pts, const T& mask) {
-        sift->compute(in, pts, mask);
+        sift->detectAndCompute(in, mask, pts, descriptors, useProvided);
     }
 };
 

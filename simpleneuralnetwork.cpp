@@ -22,31 +22,18 @@ using std::cin;
 using std::random_device;
 using std::uniform_int_distribution;
 using std::vector;
+using std::random_shuffle;
 
-/*
-Adds training data images from directory. Images in training directory are expected to be JPG 
-300 * 300. Returns number of images added
- */
-int addTrainingData(std::vector<directory_entry> v, cv::Mat& m) {
-    auto count = 0;
-    for (auto it = v.begin(); it != v.end(); ++it) {
-        cv::Mat img = cv::imread(it->path().string());
-        cv:: Mat normImg(img.size(), img.type());
+using cv::normalize;
+using cv::NORM_MINMAX;
 
-        if (img.empty())
-            continue;
-
-        cv::normalize(img, normImg, 0, 255, cv::NORM_MINMAX);
-        if (img.rows == 300 && img.cols == 300) {
-            cv::Mat cnv;
-            normImg.convertTo(cnv, CV_32F);
-            cv::Mat m_flat = cnv.reshape(1, 1); // unroll image into single channel vector
-            m.push_back(m_flat);
-            count++;
-        }
-    }
-    return count;
-}
+struct DataPoint {
+    string fileName;
+    bool isPositive;
+    Mat descriptors;
+    int startRange;
+    int endRange;
+};
 
 void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
     random_device rd;
@@ -63,72 +50,32 @@ void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
     }
 }
 
-vector<Mat> getDescriptorsAndKeypoints(vector<directory_entry> v) {
+vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
+    auto start = 0;
+    vector <DataPoint> dataPoints;
     SIFTDetector sift;
-    vector<vector< KeyPoint > > keypoints;
-    vector<Mat> images; images.reserve(v.size());
-    vector<Mat> descriptors;
+    vector<KeyPoint> keypoints;
+    Mat descriptors;
 
     for (auto it = v.begin(); it != v.end(); ++it) {
+        auto result = it->path().string().find("nosmoke");
         cv::Mat img = cv::imread(it->path().string());
-        if (! img.data)
+        if (img.empty())
             continue;
-        cv::normalize(img, img, 0, 255, cv::NORM_MINMAX);
-        images.push_back(img);
-    }
-    sift(images, keypoints, vector<Mat>());
-    sift.compute(images, keypoints, descriptors);
-    return descriptors;
-}
-
-int addColorHistTrainingData(std::vector<directory_entry> v, cv::Mat& tData) {
-    auto count =0;
-    auto featureVectorSize = 768;
-    for (auto it = v.begin(); it != v.end(); ++it) {
-        cv::Mat img = cv::imread(it->path().string());
-        if (! img.data)
-            continue;
-        cv::normalize(img, img, 0, 255, cv::NORM_MINMAX);
-        vector<cv::Mat> bgr_planes;
-        split( img, bgr_planes );
-        int histSize = 256;
-        /// Set the ranges ( for B,G,R) )
-        float range[] = { 0, 256 } ;
-        const float* histRange = { range };
-        bool uniform = true; bool accumulate = false;
-        cv::Mat b_hist, g_hist, r_hist;
-        vector<cv::Mat> test(3);
-        calcHist( &bgr_planes[0], 1, 0, cv::Mat(), test[0], 1, &histSize, &histRange, uniform, accumulate );
-        calcHist( &bgr_planes[1], 1, 0, cv::Mat(), test[1], 1, &histSize, &histRange, uniform, accumulate );
-        calcHist( &bgr_planes[2], 1, 0, cv::Mat(), test[2], 1, &histSize, &histRange, uniform, accumulate );
-
-        cv::Mat dataPoint (cv::Size(featureVectorSize,1), CV_32F);
-        //vector <cv::Mat> hists {b_hist, g_hist, r_hist};
-
-        #if 1
-        for (int i=0; i< test.size(); ++i) {
-            int offset = (histSize) * i;
-            for (int j =0; j < test[i].rows; ++j) {
-                dataPoint.at<float>(0,offset + j) = test[i].at<float>(j,0);
-            }
+        DataPoint dataPoint;
+        dataPoint.fileName = it->path().string();
+        dataPoint.isPositive = false;
+        sift(img, Mat(), keypoints, dataPoint.descriptors);
+        if (result == -1) {
+        //this is a positive data training example
+            dataPoint.isPositive = true;
         }
-        #endif
-        count ++;
-        tData.push_back(dataPoint);
+        dataPoint.startRange = start;
+        dataPoint.endRange = start + keypoints.size();
+        start = dataPoint.endRange;
+        dataPoints.push_back(dataPoint);
     }
-    return count;
-}
-
-cv::Mat getColorHistorgramDescriptorsMultipleChannels(std::vector<directory_entry> v) {
-    bool uniform = true; bool accumulate = false;
-    int histSize = 256;
-    /// Set the ranges ( for B,G,R) )
-    float range[] = { 0, 256 } ;
-    const float* histRange = { range };
-    cv::Mat colorHist(v.size(), 768, CV_32F);
-    return colorHist;
-    //hconcat(bgr_planes[1], bgr_planes[2], temp);
-    //hconcat(bgr_planes[0], temp, colorHist.row(i));
+    return dataPoints;
 }
 
 std::vector<directory_entry> getTrainingImages(string path) {
@@ -140,20 +87,35 @@ std::vector<directory_entry> getTrainingImages(string path) {
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        cout << "Program usage : <training directory>   <test directory>" << endl;
+        cout << "Program usage : <training directory> <network input size>" << endl;
         exit(1);
     }
 
-    path positivePath(argc > 1 ? argv[1] : "."), negativePath(argc > 1 ? argv[2] : ".");
-    cv::Mat trainingData;
-    auto pData = getTrainingImages(positivePath.string());
-    auto nData = getTrainingImages(negativePath.string());
-    //int pCount = addTrainingData(pData, trainingData);
-    //int nCount = addTrainingData(nData, trainingData);
+    path trainingDirectory(argv[1]);
+    int networkInputSize = atoi(argv[2]);
+    cv::Mat labels, vocabulary, descriptorSet, trainingData;
+    auto data = getTrainingImages(trainingDirectory.string());
+    vector<DataPoint> dataPoints;
+    {
+        ScopedTimer scopedTimer{"Retrieved descriptor for all images"};
+        dataPoints = getDescriptorsAndKeypoints(data);
+    }
 
-    int pCount = addColorHistTrainingData(pData, trainingData);
-    int nCount = addColorHistTrainingData(nData, trainingData);
-    int dataCount = pCount + nCount;
+    for(auto dp : dataPoints) {
+        descriptorSet.push_back(dp.descriptors);
+        cout << "Start range is "<<dp.startRange << "End range is "<<dp.endRange<<endl;
+    }
+
+    {
+
+        ScopedTimer scopedTimer{"Finished running kmeans to cluster bag of words on dataset"};
+        cv::kmeans(descriptorSet, networkInputSize, labels, 
+            cv::TermCriteria(cv::TermCriteria::EPS +
+      cv::TermCriteria::MAX_ITER, 10, 0.01), 1, cv::KMEANS_PP_CENTERS, vocabulary);
+    }
+
+    
+    //generate bag of words for our data set
 
     cv::Mat responses;
 
@@ -163,23 +125,31 @@ int main(int argc, char *argv[]) {
 
     positiveCode.at<float>(0,0) = 1; negativeCode.at<float>(0,1) = 1;
 
-    cout << "positive code: "<< positiveCode <<endl;
-    cout << "Negative code: "<< negativeCode <<endl;
-
-    for(int i =0; i < pCount; ++i) {
-        responses.push_back(positiveCode);
+    random_shuffle(dataPoints.begin(), dataPoints.end());
+    
+    for (auto dp: dataPoints) {
+        //do nothing see if this compiles
+        Mat hist = Mat::zeros(cv::Size(networkInputSize, 1), CV_32F);
+        for (int j=dp.startRange; j< dp.endRange; j++) {
+            hist.at<float>(labels.at<float>(j))++;
+        }
+        Mat normHist;
+        normalize(hist, normHist, 0, hist.rows, NORM_MINMAX, -1, Mat());
+        trainingData.push_back(normHist);
+        if (dp.isPositive) {
+            responses.push_back(positiveCode);
+        } else {
+            responses.push_back(negativeCode);
+        }
     }
 
-    for (int i = 0; i < nCount; ++i) {
-        responses.push_back(negativeCode);
-    }
 
     cout << "Responses number of rows are "<<responses.rows<<endl;
 
     cout << "Size of training data is " << trainingData.size() << endl;
 
 
-    shuffleTrainingData(trainingData, responses);
+   // shuffleTrainingData(trainingData, responses);
 
     auto dataSet = cv::ml::TrainData::create(trainingData, cv::ml::ROW_SAMPLE, responses,
             cv::noArray(), cv::noArray(), cv::noArray(), cv::noArray());
@@ -190,23 +160,8 @@ int main(int argc, char *argv[]) {
     cv::Ptr<cv::ml::ANN_MLP> nn = cv::ml::ANN_MLP::create();
     nn->setActivationFunction(cv::ml::ANN_MLP::GAUSSIAN);
 
-    /*
-    //Neural network with 2 hidden layers
-    std::vector<int> layerSizes = {270000, 1012, 512, 1};
-    nn->setLayerSizes(layerSizes);
-    {
-        ScopedTimer scopedTimer{"Trained neural network with 3 layers with varying descriptor set"};
-        nn->train(trainDataSet);
-    }
-    cout << "Calcuating error for varying descriptor neural network" << endl;
-    auto error = nn->calcError(trainDataSet, true, cv::noArray());
-    auto trainError = nn->calcError(trainDataSet, false, cv::noArray());
-    cout << "Percentage error over the test set was " << error << " percent" << endl;
-    cout << "Percentage error over the training set was " << trainError << " percent" << endl;
-    */
-
     //Neural network with 3 hidden layers
-    std::vector<int> colorHistogramLayerSizes {768, 1000, 1000, 2};
+    std::vector<int> colorHistogramLayerSizes {networkInputSize, 1000, 1000, 2};
     nn->setLayerSizes(colorHistogramLayerSizes);
     {
         ScopedTimer scopedTimer{"Trained neural network with 3 layers with single channel histogram features"};
@@ -219,10 +174,6 @@ int main(int argc, char *argv[]) {
     cout << "Percentage error over the training set was " << trainError << " percent" << endl;
 
     auto testSamples =  dataSet->getTrainSamples();
-
-    auto weights = nn->getWeights(2);
-
-    cout << "Weights of trained neural network for layer 2 are "<<weights<<endl;
 
     for(int i=0; i< testSamples.rows; ++i) {
         cout << "Size is "<< testSamples.row(i).size();

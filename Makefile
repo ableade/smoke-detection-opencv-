@@ -22,10 +22,12 @@ OPENCV_LINK_FLAGS += -lopencv_imgcodecs
 OPENCV_LINK_FLAGS += -lopencv_imgproc
 OPENCV_LINK_FLAGS += -lopencv_videoio
 OPENCV_LINK_FLAGS += -lopencv_ml
+OPENCV_LINK_FLAGS += -lopencv_xfeatures2d
+OPENCV_LINK_FLAGS += -lopencv_objdetect
 
 LFLAGS += -lboost_filesystem
 LFLAGS += -lboost_system
-LFLAGS += $(OPENCV_LINK_FLAGS)
+LFLAGS += `pkg-config --libs opencv`
 LFLAGS += -g
 simpleneuralnet : simpleneuralnetwork.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $< $(LFLAGS)
