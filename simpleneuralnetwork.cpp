@@ -51,6 +51,7 @@ void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
 }
 
 vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
+    cout << "Size of directory is "<< v.size()<<endl;
     auto start = 0;
     vector <DataPoint> dataPoints;
     SIFTDetector sift;
@@ -58,7 +59,7 @@ vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
     Mat descriptors;
 
     for (auto it = v.begin(); it != v.end(); ++it) {
-        auto result = it->path().string().find("nosmoke");
+        auto result = it->path().string().find("cat");
         cv::Mat img = cv::imread(it->path().string());
         if (img.empty())
             continue;
@@ -103,7 +104,6 @@ int main(int argc, char *argv[]) {
 
     for(auto dp : dataPoints) {
         descriptorSet.push_back(dp.descriptors);
-        cout << "Start range is "<<dp.startRange << "End range is "<<dp.endRange<<endl;
     }
 
     {
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
     nn->setActivationFunction(cv::ml::ANN_MLP::GAUSSIAN);
 
     //Neural network with 3 hidden layers
-    std::vector<int> colorHistogramLayerSizes {networkInputSize, 1000, 1000, 2};
+    std::vector<int> colorHistogramLayerSizes {networkInputSize, 400, 200, 2};
     nn->setLayerSizes(colorHistogramLayerSizes);
     {
         ScopedTimer scopedTimer{"Trained neural network with 3 layers with single channel histogram features"};
