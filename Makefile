@@ -8,7 +8,7 @@ all:  simpleneuralnet
 DEPDIR = deps
 $(shell mkdir -p $(DEPDIR) >/dev/null)
 
-CXXFLAGS += -std=c++11
+CXXFLAGS += -std=c++14
 CXXFLAGS += -O3
 CXXFLAGS += -g
 CXXFLAGS += -Wall -Wextra -pedantic

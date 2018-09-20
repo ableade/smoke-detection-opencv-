@@ -26,13 +26,14 @@ using std::random_shuffle;
 
 using cv::normalize;
 using cv::NORM_MINMAX;
+using cv::Size;
 
 struct DataPoint {
     string fileName;
     bool isPositive;
-    Mat descriptors;
     int startRange;
     int endRange;
+    Mat descriptors;
 };
 
 void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
@@ -54,10 +55,8 @@ vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
     cout << "Size of directory is "<< v.size()<<endl;
     auto start = 0;
     vector <DataPoint> dataPoints;
-    SIFTDetector sift;
+    Detector sift;
     vector<KeyPoint> keypoints;
-    Mat descriptors;
-
     for (auto it = v.begin(); it != v.end(); ++it) {
         auto result = it->path().string().find("cat");
         cv::Mat img = cv::imread(it->path().string());
@@ -87,6 +86,7 @@ std::vector<directory_entry> getTrainingImages(string path) {
 }
 
 int main(int argc, char *argv[]) {
+    auto reserveSize = 20'000'000;
     if (argc < 3) {
         cout << "Program usage : <training directory> <network input size>" << endl;
         exit(1);
@@ -94,7 +94,9 @@ int main(int argc, char *argv[]) {
 
     path trainingDirectory(argv[1]);
     int networkInputSize = atoi(argv[2]);
-    cv::Mat labels, vocabulary, descriptorSet, trainingData;
+    cv::Mat labels, vocabulary, descriptorSet(Size(128, reserveSize), CV_32F), trainingData;
+    cout << "Size of this descriptor set is "<<descriptorSet.size()<<endl;
+
     auto data = getTrainingImages(trainingDirectory.string());
     vector<DataPoint> dataPoints;
     {
@@ -102,9 +104,25 @@ int main(int argc, char *argv[]) {
         dataPoints = getDescriptorsAndKeypoints(data);
     }
 
-    for(auto dp : dataPoints) {
-        descriptorSet.push_back(dp.descriptors);
+    auto dataCount =0;
+
+    {
+        for (auto &dp : dataPoints) {
+            for (int i=0; i< dp.descriptors.rows; i++) {
+                for (int j=0; j< dp.descriptors.cols; j++) {
+                    descriptorSet.at<float>(dp.startRange +i, j) =dp.descriptors.at<float>(i, j);            
+                }
+                dataCount++;
+            }
+        }
+        cout << "Total data count was "<<dataCount;
+        ScopedTimer scopedTimer{"Finished copying descriptor set"};
     }
+
+    descriptorSet.pop_back(descriptorSet.rows - dataCount);
+
+    cout << "Descriptor set now has "<<descriptorSet.rows<<endl;
+    
 
     {
 
@@ -114,8 +132,7 @@ int main(int argc, char *argv[]) {
       cv::TermCriteria::MAX_ITER, 10, 0.01), 1, cv::KMEANS_PP_CENTERS, vocabulary);
     }
 
-    
-    //generate bag of words for our data set
+ 
 
     cv::Mat responses;
 
@@ -127,7 +144,7 @@ int main(int argc, char *argv[]) {
 
     random_shuffle(dataPoints.begin(), dataPoints.end());
     
-    for (auto dp: dataPoints) {
+    for (auto &dp: dataPoints) {
         //do nothing see if this compiles
         Mat hist = Mat::zeros(cv::Size(networkInputSize, 1), CV_32F);
         for (int j=dp.startRange; j< dp.endRange; j++) {
@@ -161,7 +178,7 @@ int main(int argc, char *argv[]) {
     nn->setActivationFunction(cv::ml::ANN_MLP::GAUSSIAN);
 
     //Neural network with 3 hidden layers
-    std::vector<int> colorHistogramLayerSizes {networkInputSize, 400, 200, 2};
+    std::vector<int> colorHistogramLayerSizes {networkInputSize, 200, 200, 2};
     nn->setLayerSizes(colorHistogramLayerSizes);
     {
         ScopedTimer scopedTimer{"Trained neural network with 3 layers with single channel histogram features"};

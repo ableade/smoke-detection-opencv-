@@ -11,19 +11,19 @@ using cv::Mat;
 using namespace cv::xfeatures2d;
 
 
-struct SIFTDetector
+struct Detector
 {
-    Ptr<Feature2D> sift;
+    Ptr<Feature2D> detector;
 
-    SIFTDetector()
+    Detector()
     {
-        sift = SIFT::create();
+        detector = SURF::create();
     }
 
     template<class T>
     void operator()(const T& in, const T& mask, vector<KeyPoint>& pts, T& descriptors, bool useProvided=false )
     {
-        sift->detectAndCompute(in, mask, pts, descriptors, useProvided);
+        detector->detectAndCompute(in, mask, pts, descriptors, useProvided);
     }
 };
 
