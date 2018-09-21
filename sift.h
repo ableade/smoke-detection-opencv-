@@ -7,6 +7,7 @@ using cv::KeyPoint;
 using cv::Feature2D;
 using cv::Ptr;
 using cv::Mat;
+using cv::KAZE;
 
 using namespace cv::xfeatures2d;
 
@@ -17,7 +18,7 @@ struct Detector
 
     Detector()
     {
-        detector = SURF::create();
+        detector = KAZE::create();
     }
 
     template<class T>

@@ -33,7 +33,6 @@ struct DataPoint {
     bool isPositive;
     int startRange;
     int endRange;
-    Mat descriptors;
 };
 
 void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
@@ -51,12 +50,13 @@ void shuffleTrainingData(cv::Mat& m, cv::Mat& responses) {
     }
 }
 
-vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
+vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v, Mat& descriptorSet) {
     cout << "Size of directory is "<< v.size()<<endl;
     auto start = 0;
     vector <DataPoint> dataPoints;
     Detector sift;
     vector<KeyPoint> keypoints;
+    Mat descriptors;
     for (auto it = v.begin(); it != v.end(); ++it) {
         auto result = it->path().string().find("cat");
         cv::Mat img = cv::imread(it->path().string());
@@ -65,7 +65,7 @@ vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
         DataPoint dataPoint;
         dataPoint.fileName = it->path().string();
         dataPoint.isPositive = false;
-        sift(img, Mat(), keypoints, dataPoint.descriptors);
+        sift(img, Mat(), keypoints, descriptors);
         if (result == -1) {
         //this is a positive data training example
             dataPoint.isPositive = true;
@@ -74,6 +74,7 @@ vector<DataPoint> getDescriptorsAndKeypoints(vector<directory_entry> v) {
         dataPoint.endRange = start + keypoints.size();
         start = dataPoint.endRange;
         dataPoints.push_back(dataPoint);
+        descriptorSet.push_back(descriptors);
     }
     return dataPoints;
 }
@@ -86,7 +87,6 @@ std::vector<directory_entry> getTrainingImages(string path) {
 }
 
 int main(int argc, char *argv[]) {
-    auto reserveSize = 20'000'000;
     if (argc < 3) {
         cout << "Program usage : <training directory> <network input size>" << endl;
         exit(1);
@@ -94,36 +94,17 @@ int main(int argc, char *argv[]) {
 
     path trainingDirectory(argv[1]);
     int networkInputSize = atoi(argv[2]);
-    cv::Mat labels, vocabulary, descriptorSet(Size(128, reserveSize), CV_32F), trainingData;
-    cout << "Size of this descriptor set is "<<descriptorSet.size()<<endl;
-
+    cv::Mat labels, vocabulary, descriptorSet, trainingData;
     auto data = getTrainingImages(trainingDirectory.string());
     vector<DataPoint> dataPoints;
+    
     {
         ScopedTimer scopedTimer{"Retrieved descriptor for all images"};
-        dataPoints = getDescriptorsAndKeypoints(data);
+        dataPoints = getDescriptorsAndKeypoints(data, descriptorSet);
     }
-
-    auto dataCount =0;
-
-    {
-        for (auto &dp : dataPoints) {
-            for (int i=0; i< dp.descriptors.rows; i++) {
-                for (int j=0; j< dp.descriptors.cols; j++) {
-                    descriptorSet.at<float>(dp.startRange +i, j) =dp.descriptors.at<float>(i, j);            
-                }
-                dataCount++;
-            }
-        }
-        cout << "Total data count was "<<dataCount;
-        ScopedTimer scopedTimer{"Finished copying descriptor set"};
-    }
-
-    descriptorSet.pop_back(descriptorSet.rows - dataCount);
 
     cout << "Descriptor set now has "<<descriptorSet.rows<<endl;
     
-
     {
 
         ScopedTimer scopedTimer{"Finished running kmeans to cluster bag of words on dataset"};
